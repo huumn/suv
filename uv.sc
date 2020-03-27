@@ -3,12 +3,12 @@
 	  uv-run)
   (import (chezscheme))
 
-  (define uvsc_listen
-    (foreign-procedure "uvsc_listen"
+  (define suv_listen
+    (foreign-procedure "suv_listen"
 		       (string int uptr)
 		       int))
-  (define uvsc_run
-    (foreign-procedure "uvsc_run"
+  (define suv_run
+    (foreign-procedure "suv_run"
 		       void
 		       void))
   
@@ -19,12 +19,12 @@
 
   ; TODO: should take alist of ip,port,protocol,etc and cb
   (define (uv-listen ip port cb)
-    (uvsc_listen ip
+    (suv_listen ip
 		 port
 		 (listen-cb cb)))
 
   (define (uv-run)
-    (uvsc_run))
+    (suv_run))
 )
 
 
