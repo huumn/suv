@@ -18,12 +18,12 @@
       (foreign-callable-entry-point code))))
 
   ; TODO: should take alist of ip,port,protocol,etc and cb
-  (define (uv-listen ip port cb)
+  (define (suv-listen ip port cb)
     (suv_listen ip
 		 port
 		 (listen-cb cb)))
 
-  (define (uv-run)
+  (define (suv-run)
     (suv_run))
 )
 

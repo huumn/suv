@@ -1,13 +1,13 @@
-(("name" . "uv")
+(("name" . "suv")
 ("version" . "0.1.0")
-("description" . "")
-("keywords")
+("description" . "libuv for Chez Scheme")
+("keywords" ("scheme"
+	     "async"
+	     "io"))
 ("author" 
     ("huumn"))
 ("private" . #f)
 ("scripts"
-    ("build" . "cd ./lib/uv/c && cc -o3 -fPIC -shared uv.c -luv -o ../uv.so")
-    ("repl" . "scheme")
-    ("run" . "scheme --script"))
+    ("build" . "cd ./lib/suv/c && cc -o3 -fPIC -shared suv.c -luv -o ../suv.so"))
 ("dependencies")
 ("devDependencies"))
