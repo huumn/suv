@@ -3,9 +3,10 @@
 ("description" . "")
 ("keywords")
 ("author" 
-    ("keyan"))
-("private" . #t)
-("scripts" 
+    ("huumn"))
+("private" . #f)
+("scripts"
+    ("build" . "cd ./lib/uv/c && cc -o3 -fPIC -shared uv.c -luv -o ../uv.so")
     ("repl" . "scheme")
     ("run" . "scheme --script"))
 ("dependencies")
