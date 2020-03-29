@@ -109,8 +109,11 @@ int suv_listen(const char* ip, int port, listen_cb cb) {
 
   err = uv_ip4_addr(ip, port, &addr);
   if (err) {
-    LOG_UVERR("setting ip4 addr", err);
-    return err;
+    err = uv_ip6_addr(ip, port, &addr);
+    if (err) {
+      LOG_UVERR("setting ip4 addr", err);
+      return err;
+    }
   }
 
   // XXX leaks obvi
