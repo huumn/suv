@@ -3,7 +3,7 @@
 	  suv-run)
   (import (chezscheme))
 
-  (define lib (load-shared-object "./lib/suv/suv.so"))
+  (define lib (load-shared-object "./lib/suv/libsuv.so"))
 
   (define suv_listen
     (foreign-procedure "suv_listen"

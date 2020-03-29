@@ -104,14 +104,14 @@ void _conn_cb(uv_stream_t *server, int status) {
 
 #define DEFAULT_BACKLOG 128
 int suv_listen(const char* ip, int port, listen_cb cb) { 
-  struct sockaddr_in addr;
+  struct sockaddr_storage addr;
   int err;
 
   err = uv_ip4_addr(ip, port, &addr);
   if (err) {
     err = uv_ip6_addr(ip, port, &addr);
     if (err) {
-      LOG_UVERR("setting ip4 addr", err);
+      LOG_UVERR("setting addr", err);
       return err;
     }
   }

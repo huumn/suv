@@ -8,6 +8,6 @@
     ("huumn"))
 ("private" . #f)
 ("scripts"
-    ("build" . "cd ./lib/suv/c && cc -o3 -fPIC -shared suv.c -luv -o ../suv.so"))
+    ("build" . "cd ./lib/suv/c && cc -o3 -fPIC -shared suv.c -luv -o ../libsuv.so"))
 ("dependencies")
 ("devDependencies"))
