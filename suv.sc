@@ -1,5 +1,6 @@
 (library (suv suv)
   (export suv-listen
+	  suv-connect
 	  suv-run
 	  suv-read-start
 	  suv-accept

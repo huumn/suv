@@ -7,7 +7,7 @@
 	      (suv-read-start client
 			      (lambda (req)
 				(suv-write client
-					   req))))
+					   req)))
 	      (suv-write client
 			 "Welcome to Echo server!\r\n")))
 
