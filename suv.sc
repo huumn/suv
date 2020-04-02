@@ -3,7 +3,8 @@
 	  suv-run
 	  suv-read-start
 	  suv-accept
-	  suv-write)
+	  suv-write
+	  suv-close)
   (import (chezscheme))
 
   (define lib (load-shared-object "./lib/suv/libsuv.so"))
@@ -16,7 +17,7 @@
   
   (define suv_write
     (foreign-procedure "suv_write"
-		       (uptr u8* uptr)
+		       (uptr string uptr)
 		       int))
 
   (define suv_read_start
@@ -24,9 +25,14 @@
 		       (uptr uptr)
 		       int))
 
-  ;; TODO: an oppertunity for macros (locked-code-pointer cb (param-type ...) ret-type)
+  ;; TODO: an oppertunity for macros (locked-code-pointer cb (p-type ...) r-type)
+   (define (unlock-object-cb)
+     (let ([code (foreign-callable unlock-object (uptr) void)])
+       (lock-object code)
+       (foreign-callable-entry-point code)))
+   
   (define (read-start-cb cb)
-    (let ([code (foreign-callable cb (u8*) void)])
+    (let ([code (foreign-callable cb (string) void)])
       (lock-object code)
       (foreign-callable-entry-point code)))
 
@@ -66,27 +72,19 @@
     (suv_read_start client
 		    (read-start-cb cb)))
 
-  (define (suv-write client data cb)
-    (suv_write client
-	       data
-	       (write-cb cb)))
+  (define suv-write
+    (case-lambda
+      [(client data)
+       (suv_write client data 0)]
+      [(client data cb)
+       (suv_write client
+		  data
+		  (write-cb cb))]))
 
-  ;; immediately welcome client, then echo whatever they say and close the connection
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;; (suv-listen ip						    ;;
-  ;; 	      port						    ;;
-  ;; 	      (lambda (client)					    ;;
-  ;; 		(suv-accept client)				    ;;
-  ;; 		(suv-read-start client				    ;;
-  ;; 				(lambda (req)			    ;;
-  ;; 				  (suv-write client		    ;;
-  ;; 					     req		    ;;
-  ;; 					     suv-close)))	    ;;
-  ;; 		(suv-write client				    ;;
-  ;; 			   (string->utf8 "hey")			    ;;
-  ;; 			   nil)))				    ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-	       
+  
+   ((foreign-procedure "set_Sunlock_object"
+		       (uptr)
+		       void) (unlock-object-cb))
 )
 
 

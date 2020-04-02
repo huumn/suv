@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include <string.h>
-#include <scheme.h>
 #include <uv.h>
 
 #define LOG_ERR(MSG) \
@@ -17,6 +16,16 @@
 // Scheme callbacks ... Perhaps function pointers should be suv_*_cb, local callbacks
 // _*_cb, and variable names into scheme S*_cb
 //
+
+// we do this to avoid linking with Chez kernel ... it allows our code
+// to unlock callbacks ... the other ways to do this are more work
+// set_Sunlock_object is expected to be called during initialization of
+// the suv library
+typedef void (*_Sunlock_object_cb)(void *);
+static _Sunlock_object_cb Sunlock_object = NULL;
+void set_Sunlock_object(_Sunlock_object_cb Scb) {
+  Sunlock_object = Scb;
+}
 
 typedef void (*_Sread_cb)(const char* request);
 typedef void (*_Swrite_cb)(int status);
@@ -66,7 +75,6 @@ static uv_buf_t *_string_to_uv_buf(const char *str) {
 }
 
 static void _uv_close_cb(uv_handle_t *client) {
-  // TODO: should probably check if Sread_cb is set
   Sunlock_object(CLIENT_DATA(client)->Sread_cb);
   free(client->data);
   free(client);
@@ -86,10 +94,11 @@ int suv_accept(uv_stream_t *client) {
 }
 
 void _uv_write_cb(uv_write_t *write, int status) {
-  // TODO: check if Swrite_cb is null
   _write_data_t *data= WRITE_DATA(write);
-  data->Swrite_cb(status);
-  Sunlock_object(data->Swrite_cb);
+  if (data->Swrite_cb) {
+    data->Swrite_cb(status);
+    Sunlock_object(data->Swrite_cb);
+  }
   free(data->buf->base);
   free(data->buf);
   free(data);
