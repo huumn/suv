@@ -25,26 +25,16 @@
 		       (uptr uptr)
 		       int))
 
-  ;; TODO: an oppertunity for macros (locked-code-pointer cb (p-type ...) r-type)
-   (define (unlock-object-cb)
-     (let ([code (foreign-callable unlock-object (uptr) void)])
-       (lock-object code)
-       (foreign-callable-entry-point code)))
-   
-  (define (read-start-cb cb)
-    (let ([code (foreign-callable cb (string) void)])
-      (lock-object code)
-      (foreign-callable-entry-point code)))
-
-  (define (connected-cb cb)
-    (let ([code (foreign-callable cb (uptr) void)])
-      (lock-object code)
-      (foreign-callable-entry-point code)))
-
-  (define (write-cb cb)
-    (let ([code (foreign-callable cb (int) void)])
-      (lock-object code)
-      (foreign-callable-entry-point code)))
+  ;; This prevents the "code" (ie exp and env) from being garbage
+  ;; collected/relocated while it is in C-land. When this locked
+  ;; code is no longer in use, unlock-code-pointer (below) should be
+  ;; called on it ... for now, this is handled in C-land
+  (define-syntax locked-code-pointer
+    (syntax-rules ()
+      [(_ cb param-types ret-type)
+       (let ([code (foreign-callable cb param-types ret-type)])
+	 (lock-object code)
+	 (foreign-callable-entry-point code))]))
 
   ;; TODO: might want to expose run args
   (define suv-run
@@ -62,15 +52,19 @@
 		       (uptr)
 		       void))
 
-  ;; TODO: should take alist of ip, port, protocol, backlog etc?
+  ;; TODO: should take alist of ip, port, protocol, backlog etc
   (define (suv-listen ip port cb)
     (suv_listen ip
 		port
-		(connected-cb cb)))
+		(locked-code-pointer cb
+				     (uptr)
+				     void)))
 
   (define (suv-read-start client cb)
     (suv_read_start client
-		    (read-start-cb cb)))
+		    (locked-code-pointer cb
+					 (string)
+					 void)))
 
   (define suv-write
     (case-lambda
@@ -79,12 +73,20 @@
       [(client data cb)
        (suv_write client
 		  data
-		  (write-cb cb))]))
+		  (locked-code-pointer cb
+				       (int)
+				       void))]))
 
+  (define (unlock-code-pointer code-ptr)
+    (unlock-object (foreign-callable-code-object code-ptr)))
   
-   ((foreign-procedure "set_Sunlock_object"
-		       (uptr)
-		       void) (unlock-object-cb))
+  ((foreign-procedure "set_Sunlock_code_pointer"
+		      (uptr)
+		      void)
+   (locked-code-pointer unlock-code-pointer
+			(uptr)
+			void))
+
 )
 
 
