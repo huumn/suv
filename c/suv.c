@@ -8,14 +8,12 @@
   fprintf(stderr, "ERROR %s - %s %s:%d\n", \
 	  MSG, uv_strerror(ERRNO), __FILE__, __LINE__)
 
-// 1. unexported definitions start with '_'
+// naming conventions ... cause there's a lot going on
+// 1. unexported symbols should start with '_'
 // 2. functions that call into Scheme and variables whose memory belongs to
 // Scheme start with 'S'
-// 3. How to deal with naming callbacks? We have function pointer (ie callback) types
-// that call into Scheme, local callbacks called from libuv, and variable names of
-// Scheme callbacks ... Perhaps function pointers should be suv_*_cb, local callbacks
-// _*_cb, and variable names into scheme S*_cb
-//
+// 3. callback types and instances of callback types should end with _cb
+// 4. callback definitionts for libuv should start with _uv
 
 // we do this to avoid linking with Chez kernel ... it allows our code
 // to unlock callbacks ... the other ways to do this are more work
@@ -93,7 +91,7 @@ int suv_accept(uv_stream_t *client) {
   return err;
 }
 
-void _uv_write_cb(uv_write_t *write, int status) {
+static void _uv_write_cb(uv_write_t *write, int status) {
   _write_data_t *data= WRITE_DATA(write);
   if (data->Swrite_cb) {
     data->Swrite_cb(status);
@@ -122,7 +120,7 @@ int suv_write(uv_stream_t *client, const char* Sdata, _Swrite_cb Scb) {
   return err;
 }
 
-void _uv_read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
+static void _uv_read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
   if (nread < 0) {
     if (nread != UV_EOF) {
       LOG_ERR("read callback");  
@@ -149,7 +147,7 @@ int suv_read_start(uv_stream_t *client, _Sread_cb Scb) {
   return err;
 }
 
-void _uv_conn_cb(uv_stream_t *server, int status) {
+static void _uv_conn_cb(uv_stream_t *server, int status) {
   int err;
   
   if (status < 0) {
@@ -162,6 +160,7 @@ void _uv_conn_cb(uv_stream_t *server, int status) {
   if (err) {
     LOG_UVERR("initing client", err);
     uv_close(client, NULL);
+    free(client);
     return;
   }
   
