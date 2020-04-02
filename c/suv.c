@@ -27,7 +27,8 @@ void set_Sunlock_code_pointer(_Sunlock_code_pointer_f Scb) {
 
 typedef void (*_Sread_cb)(const char* request);
 typedef void (*_Swrite_cb)(int status);
-typedef void (*_Sconn_cb)(uv_stream_t *client);
+typedef void (*_Sconnected_cb)(uv_stream_t *client);
+typedef void (*_Sconnect_cb)(uv_stream_t *client);
 
 typedef struct {
   uv_buf_t *buf;
@@ -45,10 +46,17 @@ typedef struct {
 
 
 typedef struct {
-  _Sconn_cb Sconn_cb;
+  _Sconnected_cb Sconnected_cb;
 } _server_data_t;
 
 #define SERVER_DATA(s) ((_server_data_t *) s->data)
+
+typedef struct {
+  uv_tcp_t *client;
+  _Sconnect_cb Sconnect_cb;
+} _connect_data_t;
+
+#define CONNECT_DATA(s) ((_connect_data_t *) s->data)
 
 static void _uv_alloc_cb(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf) {
   buf->base = calloc(1, suggested_size);
@@ -147,7 +155,7 @@ int suv_read_start(uv_stream_t *client, _Sread_cb Scb) {
   return err;
 }
 
-static void _uv_conn_cb(uv_stream_t *server, int status) {
+static void _uv_connected_cb(uv_stream_t *server, int status) {
   int err;
   
   if (status < 0) {
@@ -167,32 +175,41 @@ static void _uv_conn_cb(uv_stream_t *server, int status) {
   client->data = calloc(1, sizeof(_client_data_t));
   CLIENT_DATA(client)->server = server;
 
-  SERVER_DATA(server)->Sconn_cb(client);
+  SERVER_DATA(server)->Sconnected_cb(client);
 }
 
+static int _addr(const char *ip, int port, struct sockaddr_storage *addr) {
+  int err;
+
+  err = uv_ip4_addr(ip, port, addr);
+  if (err) {
+    err = uv_ip6_addr(ip, port, addr);
+  }
+
+  return err;
+}
+  
+
 #define DEFAULT_BACKLOG 128
-int suv_listen(const char* ip, int port, _Sconn_cb Scb) { 
+int suv_listen(const char* ip, int port, _Sconnected_cb Scb) { 
   struct sockaddr_storage addr;
   int err;
 
-  err = uv_ip4_addr(ip, port, &addr);
+  err = _addr(ip, port, &addr);
   if (err) {
-    err = uv_ip6_addr(ip, port, &addr);
-    if (err) {
-      LOG_UVERR("setting addr", err);
-      return err;
-    }
+    LOG_UVERR("addr", err);
+    return err;
   }
 
   // XXX leaks obvi
   uv_tcp_t *server = calloc(1, sizeof(*server));
   server->data = calloc(1, sizeof(_server_data_t));
   // stash callback into scheme on connection
-  SERVER_DATA(server)->Sconn_cb = Scb; 
+  SERVER_DATA(server)->Sconnected_cb = Scb; 
 
   err = uv_tcp_init(uv_default_loop(), server);
   if (err) {
-    LOG_UVERR("initing server", err);
+    LOG_UVERR("init listen", err);
     return err;
   }
   
@@ -202,9 +219,57 @@ int suv_listen(const char* ip, int port, _Sconn_cb Scb) {
     return err;
   }
 
-  err = uv_listen(server, DEFAULT_BACKLOG, _uv_conn_cb);
+  err = uv_listen(server, DEFAULT_BACKLOG, _uv_connected_cb);
   if (err) {
     LOG_UVERR("listening", err);
+    return err;
+  }
+
+  return err;
+}
+
+void _uv_connect_cb(uv_connect_t *connect, int status) { 
+  if (status < 0) {
+    LOG_ERR("connect");
+    return;
+  }
+
+  uv_tcp_t *client = CONNECT_DATA(connect)->client;
+  client->data = calloc(1, sizeof(_client_data_t));
+
+  CONNECT_DATA(connect)->Sconnect_cb(client);
+
+  // connect is no longer needed
+  Sunlock_code_pointer(CONNECT_DATA(connect)->Sconnect_cb);
+  free(connect->data);
+  free(connect);
+}
+
+int suv_connect(const char* ip, int port, _Sconnect_cb Scb) { 
+  struct sockaddr_storage addr;
+  int err;
+
+  err = _addr(ip, port, &addr);
+  if (err) {
+    LOG_UVERR("addr", err);
+    return err;
+  }
+
+  uv_connect_t *connect = calloc(1, sizeof(*connect));
+  connect->data = calloc(1, sizeof(_connect_data_t));
+  CONNECT_DATA(connect)->Sconnect_cb = Scb; 
+
+  uv_tcp_t *client = calloc(1, sizeof(*client));
+  err = uv_tcp_init(uv_default_loop(), client);
+  if (err) {
+    LOG_UVERR("init connect", err);
+    return err;
+  }
+
+  CONNECT_DATA(connect)->client = client;
+  err = uv_tcp_connect(connect, client, &addr, _uv_connect_cb);
+  if (err) {
+    LOG_UVERR("connect", err);
     return err;
   }
 

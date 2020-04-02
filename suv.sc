@@ -9,6 +9,11 @@
 
   (define lib (load-shared-object "./lib/suv/libsuv.so"))
 
+  (define suv_connect
+    (foreign-procedure "suv_connect"
+		       (string int uptr)
+		       int))
+
   ;; TODO: might want to return handle to server for shutdown, etc
   (define suv_listen
     (foreign-procedure "suv_listen"
@@ -36,21 +41,12 @@
 	 (lock-object code)
 	 (foreign-callable-entry-point code))]))
 
-  ;; TODO: might want to expose run args
-  (define suv-run
-    (foreign-procedure "suv_run"
-		       ()
-		       void))
-
-  (define suv-accept
-    (foreign-procedure "suv_accept"
-		       (uptr)
-		       int))
-
-  (define suv-close
-    (foreign-procedure "suv_close"
-		       (uptr)
-		       void))
+  (define (suv-connect ip port cb)
+    (suv_connect ip
+		 port
+		 (locked-code-pointer cb
+				      (uptr)
+				      void)))
 
   ;; TODO: should take alist of ip, port, protocol, backlog etc
   (define (suv-listen ip port cb)
@@ -60,6 +56,11 @@
 				     (uptr)
 				     void)))
 
+  (define suv-accept
+    (foreign-procedure "suv_accept"
+		       (uptr)
+		       int))
+  
   (define (suv-read-start client cb)
     (suv_read_start client
 		    (locked-code-pointer cb
@@ -76,7 +77,19 @@
 		  (locked-code-pointer cb
 				       (int)
 				       void))]))
+  
+  (define suv-close
+    (foreign-procedure "suv_close"
+		       (uptr)
+		       void))
 
+  ;; TODO: might want to expose run args
+  (define suv-run
+    (foreign-procedure "suv_run"
+		       ()
+		       void))
+
+  
   (define (unlock-code-pointer code-ptr)
     (unlock-object (foreign-callable-code-object code-ptr)))
   
