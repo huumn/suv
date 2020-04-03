@@ -1,38 +1,73 @@
 # suv
-async io for Chez Scheme via [libuv](https://github.com/libuv/libuv)
+async io (tcp sockets now) for [Chez Scheme](https://scheme.com) via [libuv](https://github.com/libuv/libuv)
 
-# This is a Work in Progress
+## Heads up
 The api is *guaranteed* to change
 
-## Example
-This example echos the received request
+## Examples
+### Echo
 ```Scheme
 (import (suv suv))
 
 (suv-listen "127.0.0.1"
-	    8080
-	    (lambda (req)
-	      req))
-		  
+	    8000
+	    (lambda (client)
+	      (suv-accept client)
+	      (suv-read-start client
+			      (lambda (req)
+				(suv-write client
+					   req)))
+	      (suv-write client
+			 "Welcome to Echo server!\r\n")))
+
 (suv-run)
 ```
 
-## async io does not make *your* code run async
-1. If your code blocks, the thread your code is operating in is blocked. An example will make this clear.
+### State via closure
 ```Scheme
-(suv-listen "127.0.0.1"
-	    8080
-	    (lambda (req)
-	      (sleep (make-time 'time-duration 0 10))))
-```
-A request sent to 127.0.0.1:8080 will block the thread it is running on for 10 seconds, preventing other requests from being processed. 
-2. This library is not threadsafe
+(import (suv suv))
 
-## This is a Work in Progress 2
+(suv-listen "127.0.0.1"
+	    8000
+	    (lambda (client)
+	      (suv-accept client)
+	      (suv-read-start client
+			      (let ([acc '()])
+				(lambda (req)
+				  (set! acc (append acc (list req)))
+				  (if (> (length acc) 1)
+				      (begin
+					(suv-write client
+						   (apply string-append
+							  acc))
+					(set! acc '()))))))
+	      (suv-write client
+			 "Welcome, I echo after 2 requests!\r\n")))
+
+(suv-run)
+```
+
+### Client
+```Scheme
+(import (suv suv))
+
+(suv-connect "127.0.0.1"
+	     8000
+	     (lambda (server)
+	       (suv-read-start server
+			       (lambda (req)
+				 (display req)
+				 (flush-output-port)))
+	       (suv-write server
+			  "Howdy, echo server!\r\n")))
+
+(suv-run)
+```
+
+## Note
 * Again, the API *will* change
-* The library only supports reading and writing to TCP sockets currently
-* The library does not deal with partial reads currently
-* Performance is not really considered (and likely won't be for some time). That said, the improvements required to make it high performing are straightforward
+* The library only supports operations on TCP sockets currently
+* Performance is not really considered (and likely won't be for some time). That said, making it higher performing is straightfoward
   - Use a mempool
-  - Don't copy memory on the request path (e.g. when calling in and out of Chez)
-  - Provide an async api for most blocking operations
+  - Don't copy memory on the request/response path (e.g. when calling in and out of Chez)
+  - Provide an async api for other blocking operations that might be performed
