@@ -8,7 +8,7 @@
 	  suv-close)
   (import (chezscheme))
 
-  (define lib (load-shared-object "./lib/suv/libsuv.so"))
+  (define lib (load-shared-object "libsuv.so"))
 
   (define suv_connect
     (foreign-procedure "suv_connect"

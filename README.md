@@ -4,6 +4,15 @@ async io (tcp sockets now) for [Chez Scheme](https://scheme.com) via [libuv](htt
 ## Heads up
 The api is *guaranteed* to change
 
+## Getting Started
+Install libuv then ...
+```bash
+git clone git@github.com:huumn/suv.git 
+cd suv
+cc -o3 -fPIC -shared c/suv.c -luv -o libsuv.so
+scheme --libdirs .. --script examples/echo.sc
+```
+
 ## Examples
 ### Echo
 ```Scheme
