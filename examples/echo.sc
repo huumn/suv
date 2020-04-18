@@ -9,6 +9,7 @@
 				(suv-write client
 					   req)))
 	      (suv-write client
-			 "Welcome to Echo server!\r\n")))
+			 (format "Welcome to Echo server, ~a!\r\n"
+				 (suv-getpeername client)))))
 
 (suv-run)

@@ -4,11 +4,12 @@
 	  suv-run
 	  suv-read-start
 	  suv-accept
+	  suv-getpeername
 	  suv-write
 	  suv-close)
   (import (chezscheme))
 
-  (define lib (load-shared-object "libsuv.so"))
+  (define lib (load-shared-object "./lib/suv/libsuv.so"))
 
   (define suv_connect
     (foreign-procedure "suv_connect"
@@ -61,6 +62,11 @@
     (foreign-procedure "suv_accept"
 		       (uptr)
 		       int))
+
+  (define suv-getpeername
+    (foreign-procedure "suv_getpeername"
+		       (uptr)
+		       string))
   
   (define (suv-read-start client cb)
     (suv_read_start client

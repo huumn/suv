@@ -10,6 +10,8 @@ Install libuv then ...
 git clone git@github.com:huumn/suv.git 
 cd suv
 cc -o3 -fPIC -shared c/suv.c -luv -o libsuv.so
+mkdir lib
+ln -s `pwd` lib
 scheme --libdirs .. --script examples/echo.sc
 ```
 
@@ -27,7 +29,8 @@ scheme --libdirs .. --script examples/echo.sc
 				(suv-write client
 					   req)))
 	      (suv-write client
-			 "Welcome to Echo server!\r\n")))
+			 "Welcome to Echo server, ~a!\r\n"
+				 (suv-getpeername client)))))
 
 (suv-run)
 ```

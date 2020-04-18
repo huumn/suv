@@ -99,6 +99,25 @@ int suv_accept(uv_stream_t *client) {
   return err;
 }
 
+// Note: this returns a pointer to static memory
+// Why this is okay: we are single threaded and
+// Scheme afaik makes a copy of the return value
+const char *suv_getpeername(uv_stream_t *client) {
+  struct sockaddr_in name;
+  int len = sizeof(name);
+  if (uv_tcp_getpeername(client, &name, &len)) {
+    LOG_ERR("getting peername");
+    return "";
+  }
+
+  char addr[16];
+  static char buf[32];
+  uv_inet_ntop(AF_INET, &name.sin_addr, addr, sizeof(addr));
+  snprintf(buf, sizeof(buf), "%s:%d", addr, ntohs(name.sin_port));
+
+  return buf;
+}
+
 static void _uv_write_cb(uv_write_t *write, int status) {
   _write_data_t *data= WRITE_DATA(write);
   if (data->Swrite_cb) {
