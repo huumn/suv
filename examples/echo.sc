@@ -7,7 +7,11 @@
 	      (suv-read-start client
 			      (lambda (req)
 				(suv-write client
-					   req)))
+					   req))
+			      (lambda (status)
+				(suv-close client)
+				(display "client closed conn\n")
+				(flush-output-port)))
 	      (suv-write client
 			 (format "Welcome to Echo server, ~a!\r\n"
 				 (suv-getpeername client)))))

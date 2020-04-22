@@ -29,7 +29,7 @@
 
   (define suv_read_start
     (foreign-procedure "suv_read_start"
-		       (uptr uptr)
+		       (uptr uptr uptr)
 		       int))
 
   ;; This prevents the "code" (ie exp and env) from being garbage
@@ -68,11 +68,21 @@
 		       (uptr)
 		       string))
   
-  (define (suv-read-start client cb)
-    (suv_read_start client
-		    (locked-code-pointer cb
-					 (string)
-					 void)))
+  (define suv-read-start
+    (case-lambda
+      [(client cb)
+       (suv-read-start client
+		       cb
+		       (lambda (status)
+			 (suv-close client)))]
+      [(client cb err-cb)
+        (suv_read_start client
+		       (locked-code-pointer cb
+					    (string)
+					    void)
+		       (locked-code-pointer err-cb
+					    (int)
+					    void))]))
 
   (define suv-write
     (case-lambda

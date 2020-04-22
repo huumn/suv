@@ -26,6 +26,7 @@ void set_Sunlock_code_pointer(_Sunlock_code_pointer_f Scb) {
 }
 
 typedef void (*_Sread_cb)(const char* request);
+typedef void (*_Sread_err_cb)(int status);
 typedef void (*_Swrite_cb)(int status);
 typedef void (*_Sconnected_cb)(uv_stream_t *client);
 typedef void (*_Sconnect_cb)(uv_stream_t *client);
@@ -40,6 +41,7 @@ typedef struct {
 typedef struct {
   uv_stream_t *server;
   _Sread_cb Sread_cb;
+  _Sread_err_cb Sread_err_cb;
 } _client_data_t;
 
 #define CLIENT_DATA(c) ((_client_data_t *) c->data)
@@ -82,6 +84,7 @@ static uv_buf_t *_string_to_uv_buf(const char *str) {
 
 static void _uv_close_cb(uv_handle_t *client) {
   Sunlock_code_pointer(CLIENT_DATA(client)->Sread_cb);
+  Sunlock_code_pointer(CLIENT_DATA(client)->Sread_err_cb);
   free(client->data);
   free(client);
 }
@@ -149,10 +152,7 @@ int suv_write(uv_stream_t *client, const char* Sdata, _Swrite_cb Scb) {
 
 static void _uv_read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf) {
   if (nread < 0) {
-    if (nread != UV_EOF) {
-      LOG_ERR("read callback");  
-    }
-    uv_close(client, _uv_close_cb);
+    CLIENT_DATA(client)->Sread_err_cb(nread);
     return;
   }
 
@@ -161,8 +161,9 @@ static void _uv_read_cb(uv_stream_t *client, ssize_t nread, const uv_buf_t *buf)
   free(str);
 }
 
-int suv_read_start(uv_stream_t *client, _Sread_cb Scb) {
+int suv_read_start(uv_stream_t *client, _Sread_cb Scb, _Sread_err_cb Serrcb) {
   CLIENT_DATA(client)->Sread_cb = Scb;
+  CLIENT_DATA(client)->Sread_err_cb = Serrcb;
   
   int err = uv_read_start(client, _uv_alloc_cb, _uv_read_cb);
   if (err) {
